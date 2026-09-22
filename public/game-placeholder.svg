@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 215">
+  <rect width="460" height="215" fill="#161616"/>
+  <path d="M0 170 130 90l95 55 75-48 160 90H0Z" fill="#2a1b05"/>
+  <circle cx="350" cy="64" r="28" fill="#d97706" opacity=".8"/>
+  <text x="24" y="190" fill="#fbbf24" font-family="Arial, sans-serif" font-size="18" font-weight="700">CAN IT RUN IT</text>
+</svg>

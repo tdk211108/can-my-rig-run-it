@@ -53,19 +53,16 @@ const IconWarn = () => (
   </svg>
 );
 
-const MAX_RAM_GB = 64;
-
-function getCatalogStrength(model: string, catalog: string[]): number {
+function getCatalogProgress(model: string, catalog: string[]): number {
   const index = catalog.indexOf(model);
   if (index < 0 || catalog.length <= 1) return 0;
   return Math.round(100 - (index / (catalog.length - 1)) * 100);
 }
 
-function getHardwareStrength(gpu: string, cpu: string, ram: number): number {
-  const gpuStrength = getCatalogStrength(gpu, GPU_CATALOG);
-  const cpuStrength = getCatalogStrength(cpu, CPU_CATALOG);
-  const ramStrength = Math.min(100, Math.round((ram / MAX_RAM_GB) * 100));
-  return Math.round(gpuStrength * 0.45 + cpuStrength * 0.35 + ramStrength * 0.2);
+function getRamProgress(ram: number): number {
+  const minimumRam = 4;
+  const maximumRam = 64;
+  return Math.round(Math.min(100, Math.max(0, ((ram - minimumRam) / (maximumRam - minimumRam)) * 100)));
 }
 
 const HW_STORAGE_KEY = 'can-it-run-it:hardware';
@@ -281,7 +278,9 @@ export default function Home() {
     if (activeGpu && !list.includes(activeGpu)) list.unshift(activeGpu);
     return list;
   })();
-  const hardwareStrength = getHardwareStrength(activeGpu, activeCpu, activeRam);
+  const gpuProgress = getCatalogProgress(activeGpu, GPU_CATALOG);
+  const cpuProgress = getCatalogProgress(activeCpu, CPU_CATALOG);
+  const ramProgress = getRamProgress(activeRam);
 
   /* ─────────────────────── RENDER ─────────────────────── */
   return (
@@ -359,9 +358,21 @@ export default function Home() {
                 <div className="hero-analysis-card">
                   <p>COMPATIBILITY</p>
                   <strong>Ready to compare</strong>
-                  <div><span>GPU</span><i /><b title={activeGpu || hardware?.gpuCleaned}>{activeGpu || hardware?.gpuCleaned || 'Choose model'}</b></div>
-                  <div><span>CPU</span><i /><b title={activeCpu}>{activeCpu || 'Choose model'}</b></div>
-                  <div><span>RAM</span><i /><b>{activeRam} GB</b></div>
+                  <div>
+                    <span>GPU</span>
+                    <i style={{ background: `linear-gradient(90deg, var(--ice) ${gpuProgress}%, rgba(255,255,255,.22) ${gpuProgress}%)` }} />
+                    <b title={activeGpu || hardware?.gpuCleaned}>{activeGpu || hardware?.gpuCleaned || 'Choose model'}</b>
+                  </div>
+                  <div>
+                    <span>CPU</span>
+                    <i style={{ background: `linear-gradient(90deg, var(--ice) ${cpuProgress}%, rgba(255,255,255,.22) ${cpuProgress}%)` }} />
+                    <b title={activeCpu}>{activeCpu || 'Choose model'}</b>
+                  </div>
+                  <div>
+                    <span>RAM</span>
+                    <i style={{ background: `linear-gradient(90deg, var(--ice) ${ramProgress}%, rgba(255,255,255,.22) ${ramProgress}%)` }} />
+                    <b>{activeRam} GB</b>
+                  </div>
                 </div>
               </div>
             </div>
@@ -383,36 +394,6 @@ export default function Home() {
                 style={{ color: 'var(--text-primary)', letterSpacing: '0.08em' }}>
                 Your Hardware
               </h2>
-            </div>
-          </div>
-
-          <div className="card-elevated p-4 space-y-2.5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--text-subtle)' }}>
-                  Hardware strength
-                </p>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  100% = top-ranked CPU/GPU and 64 GB RAM
-                </p>
-              </div>
-              <strong className="font-display text-lg" style={{ color: 'var(--amber-bright)' }}>
-                {hardwareStrength}%
-              </strong>
-            </div>
-            <div
-              className="h-2.5 w-full overflow-hidden rounded-full"
-              role="progressbar"
-              aria-label="Hardware strength"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={hardwareStrength}
-              style={{ background: 'var(--surface)' }}
-            >
-              <div
-                className="h-full rounded-full transition-[width] duration-500"
-                style={{ width: `${hardwareStrength}%`, background: 'var(--accent)' }}
-              />
             </div>
           </div>
 

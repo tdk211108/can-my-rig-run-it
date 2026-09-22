@@ -14,8 +14,9 @@ import { FEATURED_GAMES, SEARCH_SUGGESTIONS, steamCapsuleUrl } from '@/lib/featu
 import { getNonSteamGame, searchNonSteamGames } from '@/lib/nonSteamGames';
 import type { NonSteamGame, NonSteamSearchResultItem } from '@/lib/nonSteamGames';
 import { analyzeGameCompatibility } from '@/lib/comparator';
-import { GAMES_DATABASE } from '@/data/hardwareAndGames';
-import { steamRequirementToHardware } from '@/lib/steamCompatibility';
+import type { GameRequirement } from '@/data/hardwareAndGames';
+import { findCuratedGame } from '@/lib/curatedGameLookup';
+import { hasUsableRequirement, resolveSteamRequirement } from '@/lib/steamCompatibility';
 
 type SearchGameResult =
   | { source: 'steam'; item: SteamSearchResultItem }
@@ -52,6 +53,28 @@ const IconWarn = () => (
     <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
   </svg>
 );
+
+/**
+ * Builds comparison thresholds from Steam's published requirement text. Every component is
+ * resolved independently, so a game that documents only a GPU still gets a comparison, and an
+ * empty "recommended" block falls back to the minimum block.
+ */
+function buildSteamTarget(game: SteamGameDetails): GameRequirement | undefined {
+  const minimum = resolveSteamRequirement(game.minimum);
+  const recommended = hasUsableRequirement(game.recommended)
+    ? resolveSteamRequirement(game.recommended)
+    : minimum;
+  if (!minimum.requirement) return undefined;
+
+  return {
+    id: `steam:${game.id}`,
+    name: game.name,
+    genre: game.genres?.join(' / ') || 'Steam game',
+    minimum: minimum.requirement,
+    recommended: recommended.requirement ?? minimum.requirement,
+    notes: Array.from(new Set([...minimum.notes, ...recommended.notes])),
+  };
+}
 
 function getCatalogProgress(model: string, catalog: string[]): number {
   const index = catalog.indexOf(model);
@@ -124,19 +147,7 @@ export default function Home() {
           minimum: selectedGame.benchmark.minimum,
           recommended: selectedGame.benchmark.recommended ?? selectedGame.benchmark.minimum,
         }
-      : GAMES_DATABASE.find((game) => game.name.toLowerCase() === selectedGame.name.toLowerCase()) ?? (() => {
-          const minimum = steamRequirementToHardware(selectedGame.minimum);
-          const recommended = steamRequirementToHardware(selectedGame.recommended ?? selectedGame.minimum);
-          return minimum && recommended
-            ? {
-                id: `steam:${selectedGame.id}`,
-                name: selectedGame.name,
-                genre: selectedGame.genres?.join(' / ') || 'Steam game',
-                minimum,
-                recommended,
-              }
-            : undefined;
-        })()
+      : findCuratedGame(selectedGame.name) ?? buildSteamTarget(selectedGame)
     : undefined;
   const compatibilityReport = hardware && activeGpu && activeCpu && compatibilityTarget
     ? analyzeGameCompatibility(
@@ -887,8 +898,10 @@ function CompatibilityPanel({
         {[report.recommendedEvaluation.gpu, report.recommendedEvaluation.ram, report.recommendedEvaluation.cpu].map((item) => (
           <div key={item.name} className="rounded-lg px-3 py-2" style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
             <p className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--text-subtle)' }}>{item.name.replace(' Performance', '')}</p>
-            <p className="text-xs font-semibold" style={{ color: item.status === 'PASS' ? '#4ade80' : '#f87171' }}>
-              {item.status} · {Math.min(100, item.percentMatch)}%
+            <p className="text-xs font-semibold" style={{
+              color: item.status === 'PASS' ? '#4ade80' : item.status === 'FAIL' ? '#f87171' : 'var(--text-muted)',
+            }}>
+              {item.status === 'UNKNOWN' ? 'Not specified' : item.status} · {item.status === 'UNKNOWN' ? '—' : `${Math.min(100, item.percentMatch)}%`}
             </p>
           </div>
         ))}
@@ -896,6 +909,16 @@ function CompatibilityPanel({
       <ul className="space-y-1 text-xs" style={{ color: 'var(--text-muted)' }}>
         {report.advice.details.map((detail) => <li key={detail}>• {detail}</li>)}
       </ul>
+      {report.notes.length > 0 && (
+        <div className="rounded-lg px-3 py-2 space-y-1" style={{ border: '1px dashed var(--border)', background: 'var(--surface)' }}>
+          <p className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--text-subtle)' }}>
+            How these requirements were read
+          </p>
+          <ul className="space-y-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>
+            {report.notes.map((note) => <li key={note}>• {note}</li>)}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

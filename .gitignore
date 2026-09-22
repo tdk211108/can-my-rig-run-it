@@ -31,3 +31,7 @@ Thumbs.db
 *.tmp
 *.temp
 *.bak
+
+# Local diagnostics and TS incremental build cache
+tmp-diag/
+tsconfig.tsbuildinfo

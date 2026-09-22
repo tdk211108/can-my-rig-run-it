@@ -1,8 +1,17 @@
 export interface HardwareRequirement {
-  gpuName: string;
-  cpuName: string;
-  ramGB: number;
+  /** Ranked catalog entry used as the GPU threshold (null when the publisher states none). */
+  gpuName: string | null;
+  /** Ranked catalog entry used as the CPU threshold (null when the publisher states none). */
+  cpuName: string | null;
+  /** Stated system memory in GB (null when the publisher states none). */
+  ramGB: number | null;
   cpuCores: number;
+  /**
+   * How the threshold was derived from the publisher text. Only populated for Steam-derived
+   * requirements, where the match may be an equivalent or estimated catalog entry.
+   */
+  gpuNote?: string;
+  cpuNote?: string;
 }
 
 export interface GameRequirement {
@@ -11,6 +20,8 @@ export interface GameRequirement {
   genre: string;
   minimum: HardwareRequirement;
   recommended: HardwareRequirement;
+  /** Provenance/limitation notes shown next to the compatibility estimate. */
+  notes?: string[];
 }
 
 export const GAMES_DATABASE: GameRequirement[] = [

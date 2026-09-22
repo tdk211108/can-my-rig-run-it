@@ -6,6 +6,8 @@ import { RANKED_GPUS } from '@/lib/rankedGpuData';
 function normalize(value: string): string {
   return value
     .toLowerCase()
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/@\s*[\d.]+\s*(?:ghz)?/g, ' ')
     .replace(/nvidia|amd|radeon|geforce|intel|graphics|processor|cpu|gpu/g, ' ')
     .replace(/[^a-z0-9]+/g, ' ')
     .replace(/\s+/g, ' ')
@@ -14,14 +16,21 @@ function normalize(value: string): string {
 
 function findRankedName(value: string | undefined, entries: ReadonlyArray<{ name: string; rank: number }>): string | undefined {
   if (!value) return undefined;
-  const normalizedValue = normalize(value);
-  if (!normalizedValue) return undefined;
+  const alternatives = value
+    .split(/\s+\bor\b\s+|\/|,/i)
+    .map((part) => normalize(part))
+    .filter(Boolean);
 
-  const match = entries
+  const matches = entries
     .map((entry) => ({ entry, name: normalize(entry.name) }))
-    .filter(({ name }) => normalizedValue.includes(name) || name.includes(normalizedValue))
-    .sort((left, right) => right.name.length - left.name.length)[0];
+    .filter(({ name }) => alternatives.some((alternative) =>
+      alternative.includes(name) || name.includes(alternative)
+    ));
 
+  // A requirement such as "GTX 960 or RX 470" is satisfied by either
+  // option, so use the weakest matched option as the single comparison
+  // threshold (the highest rank number).
+  const match = matches.sort((left, right) => right.entry.rank - left.entry.rank)[0];
   return match?.entry.name;
 }
 

@@ -37,19 +37,9 @@ function formatSteamSearchPrice(price: SteamSearchResultItem['price']): string {
 }
 
 /* ─── Icon SVGs (no emoji-as-icon per UI checklist) ──────── */
-const IconGpu = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 2v4M10 2v4M14 2v4M18 2v4M6 18v4M10 18v4M14 18v4M18 18v4"/>
-  </svg>
-);
 const IconCpu = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/>
-  </svg>
-);
-const IconRam = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="2" y="8" width="20" height="8" rx="1.5"/><path d="M6 8V5M9 8V5M12 8V5M15 8V5M18 8V5"/>
   </svg>
 );
 const IconSearch = () => (
@@ -62,6 +52,21 @@ const IconWarn = () => (
     <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
   </svg>
 );
+
+const MAX_RAM_GB = 64;
+
+function getCatalogStrength(model: string, catalog: string[]): number {
+  const index = catalog.indexOf(model);
+  if (index < 0 || catalog.length <= 1) return 0;
+  return Math.round(100 - (index / (catalog.length - 1)) * 100);
+}
+
+function getHardwareStrength(gpu: string, cpu: string, ram: number): number {
+  const gpuStrength = getCatalogStrength(gpu, GPU_CATALOG);
+  const cpuStrength = getCatalogStrength(cpu, CPU_CATALOG);
+  const ramStrength = Math.min(100, Math.round((ram / MAX_RAM_GB) * 100));
+  return Math.round(gpuStrength * 0.45 + cpuStrength * 0.35 + ramStrength * 0.2);
+}
 
 const HW_STORAGE_KEY = 'can-it-run-it:hardware';
 
@@ -276,6 +281,7 @@ export default function Home() {
     if (activeGpu && !list.includes(activeGpu)) list.unshift(activeGpu);
     return list;
   })();
+  const hardwareStrength = getHardwareStrength(activeGpu, activeCpu, activeRam);
 
   /* ─────────────────────── RENDER ─────────────────────── */
   return (
@@ -353,8 +359,8 @@ export default function Home() {
                 <div className="hero-analysis-card">
                   <p>COMPATIBILITY</p>
                   <strong>Ready to compare</strong>
-                  <div><span>GPU</span><i /><b>Selected</b></div>
-                  <div><span>CPU</span><i /><b>Choose model</b></div>
+                  <div><span>GPU</span><i /><b title={activeGpu || hardware?.gpuCleaned}>{activeGpu || hardware?.gpuCleaned || 'Choose model'}</b></div>
+                  <div><span>CPU</span><i /><b title={activeCpu}>{activeCpu || 'Choose model'}</b></div>
                   <div><span>RAM</span><i /><b>{activeRam} GB</b></div>
                 </div>
               </div>
@@ -380,11 +386,41 @@ export default function Home() {
             </div>
           </div>
 
+          <div className="card-elevated p-4 space-y-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--text-subtle)' }}>
+                  Hardware strength
+                </p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  100% = top-ranked CPU/GPU and 64 GB RAM
+                </p>
+              </div>
+              <strong className="font-display text-lg" style={{ color: 'var(--amber-bright)' }}>
+                {hardwareStrength}%
+              </strong>
+            </div>
+            <div
+              className="h-2.5 w-full overflow-hidden rounded-full"
+              role="progressbar"
+              aria-label="Hardware strength"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={hardwareStrength}
+              style={{ background: 'var(--surface)' }}
+            >
+              <div
+                className="h-full rounded-full transition-[width] duration-500"
+                style={{ width: `${hardwareStrength}%`, background: 'var(--accent)' }}
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* ── GPU ── */}
             <div className="card-elevated p-4 space-y-3">
               <div className="flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
-                <IconGpu />
+                <RequirementIcon name="graphics" />
                 <span className="text-[10px] uppercase tracking-widest font-medium">Graphics Card</span>
               </div>
 
@@ -469,7 +505,7 @@ export default function Home() {
             {/* ── RAM ── */}
             <div className="card-elevated p-4 space-y-3">
               <div className="flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
-                <IconRam />
+                <RequirementIcon name="memory" />
                 <span className="text-[10px] uppercase tracking-widest font-medium">System Memory</span>
               </div>
 

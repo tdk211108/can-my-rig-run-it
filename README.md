@@ -98,4 +98,4 @@ scripts/              Catalog validation scripts
 
 ## License
 
-No license has been selected for this project yet. Add a license before accepting external contributions or redistributing the source.
+Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information.

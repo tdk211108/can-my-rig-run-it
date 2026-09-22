@@ -17,7 +17,7 @@ const chakraPetch = Chakra_Petch({
 });
 
 export const metadata: Metadata = {
-  title: 'Can my rig run it? — Game Spec Requirement Checker',
+  title: 'Can my rig run it? - Game Spec Requirement Checker',
   description: 'Compare your hardware with official PC game requirements from Steam and publisher catalogs.',
   icons: { icon: '/logo.png' },
 };
